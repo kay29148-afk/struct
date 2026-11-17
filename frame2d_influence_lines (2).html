@@ -1,0 +1,478 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Frame2D Studio + Influence Lines</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: drafting-table split — model canvas + results on the left, input sheets on the right */
+:root{
+  --bg:#EEF2F1; --panel:#FFFFFF; --ink:#18272C; --muted:#5B6E73; --line:#CBD6D5; --grid:#DFE7E6;
+  --steel:#2C6A86; --steel-soft:rgba(44,106,134,.16); --load:#C2780F; --neg:#B4473A; --neg-soft:rgba(180,71,58,.16);
+  --sup:#3D4E53;
+  --f-display:"Archivo",system-ui,sans-serif; --f-body:"IBM Plex Sans",system-ui,sans-serif; --f-mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#11181B; --panel:#182226; --ink:#E3ECEC; --muted:#93A6AA; --line:#2C3B40; --grid:#1F2B2F;
+  --steel:#6FB3D2; --steel-soft:rgba(111,179,210,.18); --load:#E9A23B; --neg:#E07A6B; --neg-soft:rgba(224,122,107,.18); --sup:#A9BCC0; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11181B; --panel:#182226; --ink:#E3ECEC; --muted:#93A6AA; --line:#2C3B40; --grid:#1F2B2F;
+  --steel:#6FB3D2; --steel-soft:rgba(111,179,210,.18); --load:#E9A23B; --neg:#E07A6B; --neg-soft:rgba(224,122,107,.18); --sup:#A9BCC0; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 40px}
+.wrap{max-width:1320px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;border-bottom:2px solid var(--ink);padding-bottom:10px}
+h1{font-family:var(--f-display);font-weight:800;font-size:26px;letter-spacing:-.01em;margin:0}
+h1 small{display:block;font-family:var(--f-body);font-weight:400;font-size:13px;color:var(--muted);letter-spacing:0;margin-top:2px}
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+label.sm{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+select,input,button{font:inherit;color:var(--ink)}
+select,input{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:5px 7px}
+input{font-family:var(--f-mono);font-size:13px;width:100%;min-width:0}
+input:focus,select:focus,button:focus-visible{outline:2px solid var(--steel);outline-offset:1px}
+button{cursor:pointer;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:5px 10px}
+button:hover{border-color:var(--steel)}
+button.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:6px;min-width:0}
+.tabs{display:flex;flex-wrap:wrap;gap:0;border-bottom:1px solid var(--line)}
+.tabs button{border:0;border-radius:0;background:none;padding:9px 14px;font-weight:500;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--steel)}
+.canvas{position:relative}
+svg#cv{display:block;width:100%;height:auto;background:
+  linear-gradient(var(--grid) 1px,transparent 1px) 0 0/24px 24px,
+  linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/24px 24px; background-color:var(--panel)}
+.status{display:flex;flex-wrap:wrap;gap:6px 16px;padding:8px 12px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+.status b{font-family:var(--f-mono);font-weight:500;color:var(--ink)}
+.pill{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:99px}
+.ok{background:var(--steel-soft);color:var(--steel)} .bad{background:var(--neg-soft);color:var(--neg)}
+.sec{padding:12px}
+.sec h2{font-family:var(--f-display);font-size:15px;font-weight:700;margin:0 0 8px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;text-align:left;padding:4px 4px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:3px 4px;border-bottom:1px solid var(--grid);font-variant-numeric:tabular-nums}
+td.num,th.num{text-align:right;font-family:var(--f-mono)}
+td.idx{font-family:var(--f-mono);color:var(--muted);width:28px}
+td .x{padding:2px 7px;color:var(--muted)}
+.res{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.note{font-size:12px;color:var(--muted);margin:6px 0 0}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);padding:8px 12px 0}
+.sw{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:-1px;margin-right:5px}
+svg text{font-family:var(--f-mono)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+<header>
+  <h1>Frame2D Studio<small>2D frame &amp; truss analysis · direct stiffness method · kN, m</small></h1>
+  <div class="ctrl">
+    <label class="sm" for="preset">Example</label>
+    <select id="preset">
+      <option value="ss">Simply supported beam, UDL</option>
+      <option value="cant">Cantilever, tip load</option>
+      <option value="cont">Two-span continuous beam</option>
+      <option value="portal" selected>Fixed portal frame</option>
+      <option value="truss">Pratt truss</option>
+    </select>
+    <button id="load" class="primary">Load</button>
+  </div>
+</header>
+
+<div class="grid">
+  <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+    <div class="card canvas">
+      <div class="tabs" role="tablist" id="vtabs">
+        <button role="tab" data-v="model" aria-selected="true">Model</button>
+        <button role="tab" data-v="def" aria-selected="false">Deflected shape</button>
+        <button role="tab" data-v="N" aria-selected="false">Axial (N)</button>
+        <button role="tab" data-v="V" aria-selected="false">Shear (V)</button>
+        <button role="tab" data-v="M" aria-selected="false">Moment (M)</button>
+      </div>
+      <div class="legend" id="legend"></div>
+      <svg id="cv" viewBox="0 0 860 500" aria-label="Structure drawing"></svg>
+      <div class="status" id="status"></div>
+    </div>
+    <div class="res">
+      <div class="card sec"><h2>Support reactions</h2><div class="tw"><table id="tReac"></table></div><p class="note" id="eq"></p></div>
+      <div class="card sec"><h2>Nodal displacements</h2><div class="tw"><table id="tDisp"></table></div></div>
+    </div>
+    <div class="card sec"><h2>Member end forces</h2><div class="tw"><table id="tMem"></table></div>
+      <p class="note">N: tension +. V, M at member ends in local axes (i → j). M<sub>max</sub> is the largest absolute moment along the member; sagging +.</p></div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+    <div class="card sec"><h2>Nodes <button id="addN">+ Node</button></h2><div class="tw"><table id="tN"></table></div></div>
+    <div class="card sec"><h2>Members <button id="addM">+ Member</button></h2><div class="tw"><table id="tM"></table></div>
+      <p class="note">E in GPa, A in cm², I in cm⁴. Truss members carry axial force only.</p></div>
+    <div class="card sec"><h2>Nodal loads <button id="addP">+ Load</button></h2><div class="tw"><table id="tP"></table></div>
+      <p class="note">Fx, Fy in kN (+ right, + up). M in kN·m (+ counter-clockwise).</p></div>
+    <div class="card sec"><h2>Member UDL <button id="addW">+ UDL</button></h2><div class="tw"><table id="tW"></table></div>
+      <p class="note">w in kN/m acting downward along the member length (gravity). Use negative for uplift.</p></div>
+  </div>
+</div>
+</div>
+
+<script>
+const PRESETS={
+ ss:{nodes:[[0,0,'pin'],[6,0,'rollerY']],mem:[[1,2,'frame']],P:[],W:[[1,10]]},
+ cant:{nodes:[[0,0,'fixed'],[4,0,'free']],mem:[[1,2,'frame']],P:[[2,0,-20,0]],W:[]},
+ cont:{nodes:[[0,0,'pin'],[5,0,'rollerY'],[11,0,'rollerY']],mem:[[1,2,'frame'],[2,3,'frame']],P:[],W:[[1,12],[2,12]]},
+ portal:{nodes:[[0,0,'fixed'],[0,4,'free'],[6,4,'free'],[6,0,'fixed']],mem:[[1,2,'frame'],[2,3,'frame'],[3,4,'frame']],P:[[2,10,0,0]],W:[[2,15]]},
+ truss:{nodes:[[0,0,'pin'],[3,0,'free'],[6,0,'free'],[9,0,'free'],[12,0,'rollerY'],[3,3,'free'],[6,3,'free'],[9,3,'free']],
+   mem:[[1,2,'truss'],[2,3,'truss'],[3,4,'truss'],[4,5,'truss'],[6,7,'truss'],[7,8,'truss'],[1,6,'truss'],[8,5,'truss'],
+        [2,6,'truss'],[3,7,'truss'],[4,8,'truss'],[6,3,'truss'],[8,3,'truss']],P:[[2,0,-20,0],[3,0,-20,0],[4,0,-20,0]],W:[]}
+};
+const SUP={free:'Free',pin:'Pin',rollerY:'Roller (vert.)',rollerX:'Roller (horiz.)',fixed:'Fixed'};
+const SUPDOF={free:[0,0,0],pin:[1,1,0],rollerY:[0,1,0],rollerX:[1,0,0],fixed:[1,1,1]};
+let S, R=null, view='model';
+
+function loadPreset(k){const p=PRESETS[k];
+ S={nodes:p.nodes.map(([x,y,s])=>({x,y,s})),
+    mem:p.mem.map(([i,j,t])=>({i,j,t,E:200,A:t==='truss'?40:100,I:20000})),
+    P:p.P.map(([n,fx,fy,m])=>({n,fx,fy,m})), W:p.W.map(([m,w])=>({m,w}))};
+ buildTables(); run();}
+
+const fmt=(v,d=2)=>{if(!isFinite(v))return'—';const r=Math.abs(v)<0.5*Math.pow(10,-d)?0:v;return r.toFixed(d)};
+
+/* ---------- solver ---------- */
+function geom(m){const a=S.nodes[m.i-1],b=S.nodes[m.j-1];const dx=b.x-a.x,dy=b.y-a.y,L=Math.hypot(dx,dy);return{L,c:dx/L,s:dy/L,a,b}}
+function kLocal(m,L){const E=m.E*1e6,A=m.A*1e-4,I=m.t==='truss'?0:m.I*1e-8;const k=Array.from({length:6},()=>Array(6).fill(0));
+ const ea=E*A/L,a=12*E*I/L**3,b=6*E*I/L**2,c4=4*E*I/L,c2=2*E*I/L;
+ k[0][0]=k[3][3]=ea;k[0][3]=k[3][0]=-ea;
+ if(I>0){k[1][1]=k[4][4]=a;k[1][4]=k[4][1]=-a;k[1][2]=k[2][1]=k[1][5]=k[5][1]=b;k[2][4]=k[4][2]=k[4][5]=k[5][4]=-b;k[2][2]=k[5][5]=c4;k[2][5]=k[5][2]=c2}
+ return k}
+function Tm(c,s){const T=Array.from({length:6},()=>Array(6).fill(0));for(const o of[0,3]){T[o][o]=c;T[o][o+1]=s;T[o+1][o]=-s;T[o+1][o+1]=c;T[o+2][o+2]=1}return T}
+const mv=(A,x)=>A.map(r=>r.reduce((s,v,j)=>s+v*x[j],0));
+const tmv=(A,x)=>A[0].map((_,j)=>A.reduce((s,r,i)=>s+r[j]*x[i],0));
+function memLoad(idx){return S.W.filter(w=>w.m-1===idx).reduce((s,w)=>s+(+w.w||0),0)}
+
+function solve(){
+ const n=S.nodes.length,N=3*n;
+ for(const m of S.mem){if(!(m.i>=1&&m.i<=n&&m.j>=1&&m.j<=n)||m.i===m.j)return{err:'Member connects a missing node or the same node twice.'};
+   const g=geom(m);if(!(g.L>0))return{err:'A member has zero length.'};if(!(m.E>0&&m.A>0&&(m.t==='truss'||m.I>0)))return{err:'E, A and I must be positive.'}}
+ const K=Array.from({length:N},()=>Array(N).fill(0)),F=Array(N).fill(0);const ME=[];
+ S.mem.forEach((m,idx)=>{const g=geom(m),k=kLocal(m,g.L),T=Tm(g.c,g.s);
+   const w=memLoad(idx),px=-w*g.s,py=-w*g.c,L=g.L,fr=m.t==='truss'?0:1;
+   const feq=[px*L/2,py*L/2,fr*py*L*L/12,px*L/2,py*L/2,-fr*py*L*L/12];
+   const kg=T[0].map((_,a)=>T[0].map((_,b)=>{let s=0;for(let p=0;p<6;p++)for(let q=0;q<6;q++)s+=T[p][a]*k[p][q]*T[q][b];return s}));
+   const dof=[3*(m.i-1),3*(m.i-1)+1,3*(m.i-1)+2,3*(m.j-1),3*(m.j-1)+1,3*(m.j-1)+2];
+   for(let a=0;a<6;a++){for(let b=0;b<6;b++)K[dof[a]][dof[b]]+=kg[a][b]}
+   const fg=tmv(T,feq);for(let a=0;a<6;a++)F[dof[a]]+=fg[a];
+   ME.push({g,k,T,feq,px,py,dof,w});});
+ for(const p of S.P){const i=p.n-1;if(i<0||i>=n)continue;F[3*i]+=+p.fx||0;F[3*i+1]+=+p.fy||0;F[3*i+2]+=+p.m||0}
+ const fix=Array(N).fill(0);S.nodes.forEach((nd,i)=>SUPDOF[nd.s].forEach((f,d)=>{if(f)fix[3*i+d]=1}));
+ const auto=Array(N).fill(0);for(let i=0;i<n;i++){const d=3*i+2;if(!fix[d]&&Math.abs(K[d][d])<1e-12){fix[d]=1;auto[d]=1}}
+ const free=[...Array(N).keys()].filter(d=>!fix[d]);const nf=free.length;
+ const A=free.map(r=>free.map(c=>K[r][c])),b=free.map(r=>F[r]);
+ const maxd=Math.max(1,...free.map(r=>Math.abs(K[r][r])));
+ for(let c=0;c<nf;c++){let p=c;for(let r=c+1;r<nf;r++)if(Math.abs(A[r][c])>Math.abs(A[p][c]))p=r;
+   if(Math.abs(A[p][c])<1e-10*maxd)return{err:'Structure is unstable (mechanism). Check supports and connectivity.'};
+   [A[c],A[p]]=[A[p],A[c]];[b[c],b[p]]=[b[p],b[c]];
+   for(let r=c+1;r<nf;r++){const f=A[r][c]/A[c][c];if(!f)continue;for(let k=c;k<nf;k++)A[r][k]-=f*A[c][k];b[r]-=f*b[c]}}
+ const x=Array(nf).fill(0);for(let r=nf-1;r>=0;r--){let s=b[r];for(let k=r+1;k<nf;k++)s-=A[r][k]*x[k];x[r]=s/A[r][r]}
+ const D=Array(N).fill(0);free.forEach((d,i)=>D[d]=x[i]);
+ const KD=mv(K,D),Rx=KD.map((v,i)=>v-F[i]);
+ const mem=ME.map((e,idx)=>{const de=mv(e.T,e.dof.map(d=>D[d]));const f=mv(e.k,de).map((v,i)=>v-e.feq[i]);
+   const m=S.mem[idx],L=e.g.L,EI=m.t==='truss'?0:m.E*1e6*m.I*1e-8;
+   const Nx=s=>-f[0]-e.px*s,Vx=s=>f[1]+e.py*s,Mx=s=>-f[2]+f[1]*s+e.py*s*s/2;
+   let Mmax=0;for(let k=0;k<=40;k++){const s=L*k/40,v=Mx(s);if(Math.abs(v)>Math.abs(Mmax))Mmax=v}
+   const xv=-f[1]/e.py;if(e.py&&xv>0&&xv<L&&Math.abs(Mx(xv))>Math.abs(Mmax))Mmax=Mx(xv);
+   return{...e,de,f,L,EI,Nx,Vx,Mx,Mmax,truss:m.t==='truss'}});
+ return{D,Rx,fix,auto,mem,F,N,n,nf}}
+
+function run(){R=solve();draw();tables()}
+
+/* ---------- drawing ---------- */
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+function draw(){
+ const sv=document.getElementById('cv');const W=860,H=500,pad=78;
+ const xs=S.nodes.map(n=>n.x),ys=S.nodes.map(n=>n.y);
+ const minx=Math.min(...xs),maxx=Math.max(...xs),miny=Math.min(...ys),maxy=Math.max(...ys);
+ const dx=Math.max(maxx-minx,1e-9),dy=Math.max(maxy-miny,1e-9);
+ const sc=Math.min((W-2*pad)/(dx||1),(H-2*pad)/(dy||1),(W-2*pad)/(Math.max(dx,dy)));
+ const ox=(W-dx*sc)/2-minx*sc,oy=(H+dy*sc)/2+miny*sc;
+ const X=x=>ox+x*sc,Y=y=>oy-y*sc;
+ const C={ink:css('--ink'),mut:css('--muted'),st:css('--steel'),sts:css('--steel-soft'),ld:css('--load'),ng:css('--neg'),ngs:css('--neg-soft'),sup:css('--sup'),pn:css('--panel')};
+ let o='';const ok=R&&!R.err;
+ const ghost=(view!=='model');
+ // members
+ S.mem.forEach((m,i)=>{const a=S.nodes[m.i-1],b=S.nodes[m.j-1];if(!a||!b)return;
+   o+=`<line x1="${X(a.x)}" y1="${Y(a.y)}" x2="${X(b.x)}" y2="${Y(b.y)}" stroke="${ghost?C.mut:C.ink}" stroke-width="${ghost?1.5:(m.t==='truss'?2.5:4)}" ${ghost?'stroke-dasharray="5 4"':''} stroke-linecap="round"/>`;
+   if(view==='model'){const mx=X((a.x+b.x)/2),my=Y((a.y+b.y)/2);o+=`<rect x="${mx-11}" y="${my-9}" width="22" height="16" rx="3" fill="${C.pn}" stroke="${C.mut}" stroke-width=".8"/><text x="${mx}" y="${my+3}" font-size="10" text-anchor="middle" fill="${C.mut}">${i+1}</text>`}});
+ // diagrams
+ if(ok&&view==='def'){
+   let mx=0;for(let i=0;i<R.n;i++)mx=Math.max(mx,Math.hypot(R.D[3*i],R.D[3*i+1]));
+   R.mem.forEach(e=>{const L=e.L;for(let k=0;k<=20;k++){const s=L*k/20;const v=Math.abs(e.EI?hermite(e,s):0);if(v>mx)mx=v}});
+   const amp=mx>0?(0.09*Math.max(dx,dy))/mx:0;
+   R.mem.forEach(e=>{const {a,c,s}=e.g;let pts=[];for(let k=0;k<=24;k++){const xx=e.L*k/24,u=e.de[0]*(1-k/24)+e.de[3]*k/24,v=e.EI?hermite(e,xx):(e.de[1]*(1-k/24)+e.de[4]*k/24);
+     const gx=a.x+c*xx+amp*(c*u-s*v),gy=a.y+s*xx+amp*(s*u+c*v);pts.push(`${X(gx).toFixed(1)},${Y(gy).toFixed(1)}`)}
+     o+=`<polyline points="${pts.join(' ')}" fill="none" stroke="${C.st}" stroke-width="3" stroke-linejoin="round"/>`});
+   S.nodes.forEach((n,i)=>{const ux=R.D[3*i],uy=R.D[3*i+1];if(Math.hypot(ux,uy)*1000>0.01){o+=`<text x="${X(n.x+amp*ux)+8}" y="${Y(n.y+amp*uy)-8}" font-size="10.5" fill="${C.st}">${fmt(Math.hypot(ux,uy)*1000,2)} mm</text>`}});
+   o+=`<text x="12" y="${H-12}" font-size="11" fill="${C.mut}">Displacements magnified ×${fmt(amp,0)}</text>`;
+ }
+ if(ok&&['N','V','M'].includes(view)){
+   const fn=e=>view==='N'?e.Nx:view==='V'?e.Vx:e.Mx;let mx=0;
+   R.mem.forEach(e=>{for(let k=0;k<=40;k++){mx=Math.max(mx,Math.abs(fn(e)(e.L*k/40)))}});
+   const amp=mx>1e-9?55/sc/mx:0,sign=view==='M'?-1:1;
+   R.mem.forEach(e=>{if(view!=='N'&&e.truss)return;const {a,c,s}=e.g,f=fn(e);let pos=[],lab=[];
+     const base=(xx)=>[a.x+c*xx,a.y+s*xx];
+     const pt=xx=>{const v=f(xx),[bx,by]=base(xx);return[bx-s*v*amp*sign,by+c*v*amp*sign,v]};
+     const nseg=40;let poly=[`${X(a.x)},${Y(a.y)}`];let vmax={v:0,x:0};
+     for(let k=0;k<=nseg;k++){const xx=e.L*k/nseg,[px,py,v]=pt(xx);poly.push(`${X(px).toFixed(1)},${Y(py).toFixed(1)}`);if(Math.abs(v)>Math.abs(vmax.v))vmax={v,x:xx}}
+     const b=base(e.L);poly.push(`${X(b[0])},${Y(b[1])}`);
+     const v0=f(0),v1=f(e.L);const col=(view==='N'?((v0+v1)/2<0?C.ng:C.st):C.st),fill=(view==='N'?((v0+v1)/2<0?C.ngs:C.sts):C.sts);
+     o+=`<polygon points="${poly.join(' ')}" fill="${fill}" stroke="${col}" stroke-width="1.6" stroke-linejoin="round"/>`;
+     const L1=(xx,v)=>{if(Math.abs(v)<0.005)return;const[px,py]=pt(xx);const off=(v*sign>=0?1:-1)*12;const tx=X(px-s*off/sc),ty=Y(py+c*off/sc)+4;
+       o+=`<text x="${tx}" y="${ty}" font-size="10.5" text-anchor="middle" fill="${col}" paint-order="stroke" stroke="${C.pn}" stroke-width="3">${fmt(v,1)}</text>`};
+     L1(0,v0);L1(e.L,v1);if(vmax.x>0.05*e.L&&vmax.x<0.95*e.L)L1(vmax.x,vmax.v);});
+   const unit=view==='M'?'kN·m':'kN';
+   o+=`<text x="12" y="${H-12}" font-size="11" fill="${C.mut}">${view==='M'?'Bending moment, drawn on tension side':view==='V'?'Shear force':'Axial force (blue tension, red compression)'} · ${unit} · max |${view}| = ${fmt(mx,2)}</text>`;
+ }
+ // UDLs
+ if(view==='model'||view==='def'){S.W.forEach(w=>{const m=S.mem[w.m-1];if(!m||!+w.w)return;const a=S.nodes[m.i-1],b=S.nodes[m.j-1];if(!a||!b)return;
+   const dir=+w.w>0?1:-1,h=26;const x1=X(a.x),y1=Y(a.y),x2=X(b.x),y2=Y(b.y);const nA=8;
+   o+=`<line x1="${x1}" y1="${y1-h*dir-6}" x2="${x2}" y2="${y2-h*dir-6}" stroke="${C.ld}" stroke-width="1.4"/>`;
+   for(let k=0;k<=nA;k++){const px=x1+(x2-x1)*k/nA,py=y1+(y2-y1)*k/nA;o+=arrow(px,py-h*dir-6,px,py-4*dir,C.ld,1.2,6)}
+   o+=`<text x="${(x1+x2)/2}" y="${(y1+y2)/2-h*dir-6-(dir>0?6:-14)}" font-size="11" text-anchor="middle" fill="${C.ld}">w = ${fmt(+w.w,1)} kN/m</text>`})}
+ // supports
+ S.nodes.forEach(n=>{o+=support(X(n.x),Y(n.y),n.s,C)});
+ // nodes
+ S.nodes.forEach((n,i)=>{o+=`<circle cx="${X(n.x)}" cy="${Y(n.y)}" r="4" fill="${C.pn}" stroke="${C.ink}" stroke-width="1.6"/>`;
+   if(view==='model')o+=`<text x="${X(n.x)-9}" y="${Y(n.y)-9}" font-size="11" font-weight="500" text-anchor="end" fill="${C.ink}">${i+1}</text>`});
+ // nodal loads
+ if(view==='model'||view==='def')S.P.forEach(p=>{const n=S.nodes[p.n-1];if(!n)return;const x=X(n.x),y=Y(n.y);
+   if(+p.fy){const d=+p.fy<0?1:-1;o+=arrow(x,y-52*d,x,y-6*d,C.ld,2,9);o+=`<text x="${x+7}" y="${y-44*d+(d<0?8:0)}" font-size="11" fill="${C.ld}">${fmt(Math.abs(p.fy),1)} kN</text>`}
+   if(+p.fx){const d=+p.fx>0?1:-1;o+=arrow(x-56*d,y,x-6*d,y,C.ld,2,9);o+=`<text x="${x-40*d}" y="${y-7}" font-size="11" text-anchor="middle" fill="${C.ld}">${fmt(Math.abs(p.fx),1)} kN</text>`}
+   if(+p.m){const r=20,ccw=+p.m>0;o+=`<path d="M ${x+r} ${y} A ${r} ${r} 0 1 ${ccw?0:1} ${x} ${y+(ccw?r:-r)}" fill="none" stroke="${C.ld}" stroke-width="1.8"/>`;
+     o+=`<text x="${x+r+4}" y="${y-r+4}" font-size="11" fill="${C.ld}">${fmt(Math.abs(p.m),1)} kN·m ${ccw?'↺':'↻'}</text>`}});
+ // reactions in model view
+ if(ok&&view==='model'){S.nodes.forEach((n,i)=>{const parts=[];['Rx','Ry','Mz'].forEach((l,d)=>{const k=3*i+d;if(R.fix[k]&&!R.auto[k])parts.push(`${l} ${fmt(R.Rx[k],1)}`)});
+   if(parts.length)o+=`<text x="${X(n.x)}" y="${Y(n.y)+46}" font-size="10" text-anchor="middle" fill="${C.mut}">${parts.join('  ')}</text>`})}
+ if(R&&R.err)o+=`<text x="${W/2}" y="28" font-size="13" text-anchor="middle" fill="${C.ng}">${R.err}</text>`;
+ sv.innerHTML=o;
+ const lg=document.getElementById('legend');
+ lg.innerHTML=view==='model'?`<span><i class="sw" style="background:var(--ink)"></i>Member (number in box)</span><span><i class="sw" style="background:var(--load)"></i>Applied load</span><span>Reactions below supports (kN, kN·m)</span>`:'';
+ lg.hidden=view!=='model';
+ const st=document.getElementById('status');
+ if(R&&!R.err){const dmax=Math.max(...S.nodes.map((_,i)=>Math.abs(R.D[3*i+1])))*1000;const mmax=Math.max(0,...R.mem.map(e=>Math.abs(e.Mmax)));
+   st.innerHTML=`<span class="pill ok">Solved</span><span>Nodes <b>${R.n}</b></span><span>Members <b>${S.mem.length}</b></span><span>Free DOF <b>${R.nf}</b></span><span>Max vertical deflection <b>${fmt(dmax,2)} mm</b></span><span>Max |M| <b>${fmt(mmax,2)} kN·m</b></span>`}
+ else st.innerHTML=`<span class="pill bad">Not solved</span><span>${R?R.err:''}</span>`;
+}
+function hermite(e,x){const L=e.L,q=x/L,[,v1,t1,,v2,t2]=e.de;
+ return (1-3*q*q+2*q**3)*v1+L*(q-2*q*q+q**3)*t1+(3*q*q-2*q**3)*v2+L*(-q*q+q**3)*t2+(e.EI?e.py*x*x*(L-x)**2/(24*e.EI):0)}
+function arrow(x1,y1,x2,y2,c,w,h){const a=Math.atan2(y2-y1,x2-x1),s=h*.5;
+ return `<line x1="${x1}" y1="${y1}" x2="${x2-Math.cos(a)*h*.6}" y2="${y2-Math.sin(a)*h*.6}" stroke="${c}" stroke-width="${w}"/><polygon points="${x2},${y2} ${x2-h*Math.cos(a)+s*Math.sin(a)},${y2-h*Math.sin(a)-s*Math.cos(a)} ${x2-h*Math.cos(a)-s*Math.sin(a)},${y2-h*Math.sin(a)+s*Math.cos(a)}" fill="${c}"/>`}
+function support(x,y,t,C){const c=C.sup;let o='';
+ const hatch=(x0,y0,w)=>{let h=`<line x1="${x0-w}" y1="${y0}" x2="${x0+w}" y2="${y0}" stroke="${c}" stroke-width="1.6"/>`;for(let k=-w;k<w;k+=6)h+=`<line x1="${x0+k}" y1="${y0+6}" x2="${x0+k+6}" y2="${y0}" stroke="${c}" stroke-width="1"/>`;return h};
+ if(t==='pin'){o+=`<polygon points="${x},${y+4} ${x-12},${y+22} ${x+12},${y+22}" fill="none" stroke="${c}" stroke-width="1.6"/>`+hatch(x,y+22,16)}
+ if(t==='rollerY'){o+=`<polygon points="${x},${y+4} ${x-12},${y+19} ${x+12},${y+19}" fill="none" stroke="${c}" stroke-width="1.6"/><circle cx="${x-6}" cy="${y+23}" r="3.5" fill="none" stroke="${c}" stroke-width="1.4"/><circle cx="${x+6}" cy="${y+23}" r="3.5" fill="none" stroke="${c}" stroke-width="1.4"/>`+hatch(x,y+27,16)}
+ if(t==='rollerX'){o+=`<polygon points="${x-4},${y} ${x-19},${y-12} ${x-19},${y+12}" fill="none" stroke="${c}" stroke-width="1.6"/><circle cx="${x-23}" cy="${y-6}" r="3.5" fill="none" stroke="${c}" stroke-width="1.4"/><circle cx="${x-23}" cy="${y+6}" r="3.5" fill="none" stroke="${c}" stroke-width="1.4"/><line x1="${x-27}" y1="${y-16}" x2="${x-27}" y2="${y+16}" stroke="${c}" stroke-width="1.6"/>`}
+ if(t==='fixed'){o+=`<rect x="${x-16}" y="${y+3}" width="32" height="5" fill="${c}"/>`+hatch(x,y+8,16)}
+ return o}
+
+/* ---------- result tables ---------- */
+function tables(){
+ const tR=document.getElementById('tReac'),tD=document.getElementById('tDisp'),tM=document.getElementById('tMem'),eq=document.getElementById('eq');
+ if(!R||R.err){tR.innerHTML=tD.innerHTML=tM.innerHTML='<tr><td>—</td></tr>';eq.textContent='';return}
+ let h='<tr><th>Node</th><th>Type</th><th class="num">Rx (kN)</th><th class="num">Ry (kN)</th><th class="num">Mz (kN·m)</th></tr>';let sx=0,sy=0;
+ S.nodes.forEach((n,i)=>{if(n.s==='free')return;const c=d=>{const k=3*i+d;return R.fix[k]&&!R.auto[k]?fmt(R.Rx[k],2):'—'};sx+=R.fix[3*i]?R.Rx[3*i]:0;sy+=R.fix[3*i+1]?R.Rx[3*i+1]:0;
+   h+=`<tr><td class="idx">${i+1}</td><td>${SUP[n.s]}</td><td class="num">${c(0)}</td><td class="num">${c(1)}</td><td class="num">${c(2)}</td></tr>`});
+ tR.innerHTML=h;
+ let lx=0,ly=0;S.P.forEach(p=>{lx+=+p.fx||0;ly+=+p.fy||0});R.mem.forEach(e=>{lx+=e.px*e.L*e.g.c-e.py*e.L*e.g.s;ly+=e.px*e.L*e.g.s+e.py*e.L*e.g.c});
+ eq.innerHTML=`Equilibrium check: ΣRx + ΣFx = ${fmt(sx+lx,3)} kN · ΣRy + ΣFy = ${fmt(sy+ly,3)} kN`;
+ h='<tr><th>Node</th><th class="num">ux (mm)</th><th class="num">uy (mm)</th><th class="num">θ (mrad)</th></tr>';
+ S.nodes.forEach((n,i)=>{h+=`<tr><td class="idx">${i+1}</td><td class="num">${fmt(R.D[3*i]*1000,3)}</td><td class="num">${fmt(R.D[3*i+1]*1000,3)}</td><td class="num">${R.auto[3*i+2]?'—':fmt(R.D[3*i+2]*1000,3)}</td></tr>`});
+ tD.innerHTML=h;
+ h='<tr><th>Mem</th><th>i–j</th><th class="num">L (m)</th><th class="num">N (kN)</th><th class="num">V<sub>i</sub></th><th class="num">M<sub>i</sub></th><th class="num">V<sub>j</sub></th><th class="num">M<sub>j</sub></th><th class="num">M<sub>max</sub></th></tr>';
+ R.mem.forEach((e,i)=>{const m=S.mem[i],t=e.truss;h+=`<tr><td class="idx">${i+1}</td><td>${m.i}–${m.j}</td><td class="num">${fmt(e.L,2)}</td><td class="num">${fmt(e.Nx(0),2)}${Math.abs(e.Nx(0)-e.Nx(e.L))>.005?' / '+fmt(e.Nx(e.L),2):''}</td>
+   <td class="num">${t?'—':fmt(e.Vx(0),2)}</td><td class="num">${t?'—':fmt(e.Mx(0),2)}</td><td class="num">${t?'—':fmt(e.Vx(e.L),2)}</td><td class="num">${t?'—':fmt(e.Mx(e.L),2)}</td><td class="num">${t?'—':fmt(e.Mmax,2)}</td></tr>`});
+ tM.innerHTML=h;
+}
+
+/* ---------- input tables ---------- */
+function inp(id,val,key,obj,type='number',step='any'){return `<input id="${id}" type="${type}" step="${step}" value="${val}" data-k="${key}">`}
+function buildTables(){
+ const sel=(id,v,opts)=>`<select id="${id}" data-k="s">${Object.entries(opts).map(([k,l])=>`<option value="${k}"${k===v?' selected':''}>${l}</option>`).join('')}</select>`;
+ let h='<tr><th>#</th><th>x (m)</th><th>y (m)</th><th>Support</th><th></th></tr>';
+ S.nodes.forEach((n,i)=>h+=`<tr data-a="nodes" data-i="${i}"><td class="idx">${i+1}</td><td>${inp('nx'+i,n.x,'x')}</td><td>${inp('ny'+i,n.y,'y')}</td><td>${sel('ns'+i,n.s,SUP)}</td><td><button class="x" aria-label="Remove node ${i+1}">×</button></td></tr>`);
+ document.getElementById('tN').innerHTML=h;
+ h='<tr><th>#</th><th>i</th><th>j</th><th>Type</th><th>E</th><th>A</th><th>I</th><th></th></tr>';
+ S.mem.forEach((m,i)=>h+=`<tr data-a="mem" data-i="${i}"><td class="idx">${i+1}</td><td>${inp('mi'+i,m.i,'i','','number','1')}</td><td>${inp('mj'+i,m.j,'j','','number','1')}</td><td><select id="mt${i}" data-k="t"><option value="frame"${m.t==='frame'?' selected':''}>Frame</option><option value="truss"${m.t==='truss'?' selected':''}>Truss</option></select></td><td>${inp('mE'+i,m.E,'E')}</td><td>${inp('mA'+i,m.A,'A')}</td><td>${inp('mI'+i,m.I,'I')}</td><td><button class="x" aria-label="Remove member ${i+1}">×</button></td></tr>`);
+ document.getElementById('tM').innerHTML=h;
+ h='<tr><th>Node</th><th>Fx</th><th>Fy</th><th>M</th><th></th></tr>';
+ S.P.forEach((p,i)=>h+=`<tr data-a="P" data-i="${i}"><td>${inp('pn'+i,p.n,'n','','number','1')}</td><td>${inp('px'+i,p.fx,'fx')}</td><td>${inp('py'+i,p.fy,'fy')}</td><td>${inp('pm'+i,p.m,'m')}</td><td><button class="x" aria-label="Remove load">×</button></td></tr>`);
+ if(!S.P.length)h+='<tr><td colspan="5" class="note">No nodal loads.</td></tr>';
+ document.getElementById('tP').innerHTML=h;
+ h='<tr><th>Member</th><th>w (kN/m)</th><th></th></tr>';
+ S.W.forEach((w,i)=>h+=`<tr data-a="W" data-i="${i}"><td>${inp('wm'+i,w.m,'m','','number','1')}</td><td>${inp('ww'+i,w.w,'w')}</td><td><button class="x" aria-label="Remove UDL">×</button></td></tr>`);
+ if(!S.W.length)h+='<tr><td colspan="3" class="note">No member loads.</td></tr>';
+ document.getElementById('tW').innerHTML=h;
+}
+document.querySelectorAll('#tN,#tM,#tP,#tW').forEach(t=>{
+ t.addEventListener('input',ev=>{const el=ev.target,tr=el.closest('tr');if(!tr||!tr.dataset.a)return;const o=S[tr.dataset.a][+tr.dataset.i],k=el.dataset.k;
+   o[k]=el.tagName==='SELECT'?el.value:(el.value===''?0:+el.value);run()});
+ t.addEventListener('click',ev=>{const b=ev.target.closest('button.x');if(!b)return;const tr=b.closest('tr'),a=tr.dataset.a,i=+tr.dataset.i;
+   if(a==='nodes'){const no=i+1;S.mem=S.mem.filter(m=>m.i!==no&&m.j!==no).map(m=>({...m,i:m.i>no?m.i-1:m.i,j:m.j>no?m.j-1:m.j}));S.P=S.P.filter(p=>p.n!==no).map(p=>({...p,n:p.n>no?p.n-1:p.n}))}
+   if(a==='mem'){const no=i+1;S.W=S.W.filter(w=>w.m!==no).map(w=>({...w,m:w.m>no?w.m-1:w.m}))}
+   S[a].splice(i,1);buildTables();run()});});
+document.getElementById('addN').onclick=()=>{const l=S.nodes[S.nodes.length-1]||{x:0,y:0};S.nodes.push({x:l.x+2,y:l.y,s:'free'});buildTables();run()};
+document.getElementById('addM').onclick=()=>{const n=S.nodes.length;S.mem.push({i:Math.max(1,n-1),j:n,t:'frame',E:200,A:100,I:20000});buildTables();run()};
+document.getElementById('addP').onclick=()=>{S.P.push({n:1,fx:0,fy:-10,m:0});buildTables();run()};
+document.getElementById('addW').onclick=()=>{S.W.push({m:1,w:10});buildTables();run()};
+document.getElementById('load').onclick=()=>loadPreset(document.getElementById('preset').value);
+document.getElementById('vtabs').addEventListener('click',ev=>{const b=ev.target.closest('button');if(!b)return;view=b.dataset.v;
+ document.querySelectorAll('#vtabs button').forEach(x=>x.setAttribute('aria-selected',x===b));draw()});
+matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',draw);
+new MutationObserver(draw).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+loadPreset('portal');
+</script>
+
+<style>
+#IL .ctrl2{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:end;margin-top:6px}
+#IL .ctrl2 div{display:flex;flex-direction:column;gap:2px}#IL .ctrl2 input,#IL .ctrl2 select{width:72px}
+svg.pl{width:100%;height:auto;display:block;background:var(--panel);border:1px solid var(--grid);border-radius:4px;margin:4px 0 12px}
+.pl .ax{stroke:var(--sup);fill:none}.pl .bm{stroke:var(--ink);stroke-width:2.5}.pl .pg{fill:var(--steel-soft);stroke:var(--steel);stroke-width:1.5}
+.pl text{font-size:10px;fill:var(--muted)}.pl .ld{stroke:var(--load);fill:var(--load);stroke-width:2}.pl .l2{stroke:var(--neg);fill:var(--neg);stroke-width:2;stroke-dasharray:3 2}
+.pl .hg{fill:var(--panel);stroke:var(--ink)}#IL h3{font:700 13px var(--f-display);margin:4px 0 0}
+</style>
+<div class="wrap" id="IL" style="margin-top:28px">
+<header><h1>Influence Lines &amp; Moving Truck Load<small>Müller-Breslau (unit-load analysis) · AASHTO HS20-44 · truck runs both directions · kip, ft</small></h1>
+<div class="ctrl"><label class="sm" for="ilp">Problem</label><select id="ilp"><option value="8.8">P8.8</option><option value="8.9">P8.9</option><option value="8.10">P8.10</option><option value="8.11">P8.11</option></select><button id="ill" class="primary">Load</button></div></header>
+<div class="grid"><div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+<div class="card sec"><h2>Structural model</h2><div id="ilM"></div></div>
+<div class="card"><div class="status" id="ilS"></div><div class="sec tw"><h2>Truck maximum from the influence lines</h2><table id="ilT"></table><p class="note">x = position of the 8 k axle measured from A; → / ← = travel direction. Values: kip (R, V) or kip·ft (M).</p></div></div>
+<div class="card sec"><h2>Influence lines <span class="note" style="margin:0">orange = truck at max · red dashed = truck at min</span></h2><div id="ilP"></div></div>
+<div class="card sec"><h2>Worked solution (วิธีทำ): response = Σ P·y</h2><div id="ilW"></div></div>
+<div class="card sec"><h2>Envelopes of SFD and BMD (truck, both directions)</h2><div id="ilE"></div></div></div>
+<div style="display:flex;flex-direction:column;gap:16px;min-width:0"><div class="card sec">
+<h2>Beam model <button id="ilA">+ node</button></h2><div class="tw"><table id="ilN"></table></div>
+<p class="note">Beam runs from x = 0 to the last node. Pin = roller (vertical loads only). EI constant. Check supports/hinges against your textbook figure and edit if needed.</p>
+<h2 style="margin-top:12px">Responses</h2><input id="ilR"><p class="note">R = reaction · T = fixed-end moment reaction (ccw +) · M = bending moment (sagging +) · V = shear just right of x. Example: R0 M10 V20</p>
+<h2 style="margin-top:12px">Truck</h2><div class="ctrl2">
+<div><label class="sm">Preset</label><select id="ilT0" style="width:110px"><option value="8,14,32,30,32">HS20-44</option><option value="6,14,24,30,24">HS15-44</option><option value="10">Single 10 k</option><option value="">Custom</option></select></div><div style="flex:1;min-width:200px"><label class="sm">Axles: load, gap, load, gap, … (k, ft; front axle first)</label><input id="ilAx" value="8,14,32,30,32" style="width:100%"></div><div><label class="sm">direction</label><select id="ild" style="width:96px"><option value="0">both ⇄</option><option value="1">→ right</option><option value="-1">← left</option></select></div>
+<div><label class="sm">step (ft)</label><select id="ilh"><option>0.5</option><option>0.25</option><option>1</option></select></div></div>
+</div></div></div></div>
+<script>
+(()=>{
+/*ENGINE*/
+function solve(nodes,h){
+ const L=Math.max(...nodes.map(q=>q.x)),N=Math.round(L/h),sup={},hg=new Set();
+ nodes.forEach(q=>{const p=Math.round(q.x/h);if(q.s!=='free')sup[p]=q.s;if(q.h&&p>0&&p<N)hg.add(p)});
+ let nd=N+1;const rl=[],rr=[];
+ for(let p=0;p<=N;p++){rl[p]=nd++;rr[p]=hg.has(p)?nd++:rl[p]}
+ const n=nd,K=Array.from({length:n},()=>new Float64Array(n)),l=h,
+ ke=[[12,6*l,-12,6*l],[6*l,4*l*l,-6*l,2*l*l],[-12,-6*l,12,-6*l],[6*l,2*l*l,-6*l,4*l*l]].map(r=>r.map(v=>v/l**3)),ed=e=>[e,rr[e],e+1,rl[e+1]];
+ for(let e=0;e<N;e++){const d=ed(e);for(let a=0;a<4;a++)for(let b=0;b<4;b++)K[d[a]][d[b]]+=ke[a][b]}
+ const fx=new Set();for(const p in sup){fx.add(+p);if(sup[p]==='fixed'){fx.add(rl[p]);fx.add(rr[p])}}
+ const F=[];for(let i=0;i<n;i++)if(!fx.has(i))F.push(i);
+ const m=F.length,W=N+1,A=F.map(i=>{const r=new Float64Array(m+W);F.forEach((j,b)=>r[b]=K[i][j]);if(i<=N)r[m+i]=-1;return r});
+ for(let c=0;c<m;c++){let q=c;for(let r=c+1;r<m;r++)if(Math.abs(A[r][c])>Math.abs(A[q][c]))q=r;
+  if(Math.abs(A[q][c])<1e-8)throw Error('Unstable structure (mechanism) – check supports/hinges');
+  [A[c],A[q]]=[A[q],A[c]];const pr=A[c],pv=pr[c];
+  for(let r=c+1;r<m;r++){const t=A[r][c]/pv;if(t){const rw=A[r];for(let j=c;j<m+W;j++)rw[j]-=t*pr[j]}}}
+ const X=Array.from({length:m},()=>new Float64Array(W));
+ for(let c=m-1;c>=0;c--)for(let k=0;k<W;k++){let s=A[c][m+k];for(let j=c+1;j<m;j++)s-=A[c][j]*X[j][k];X[c][k]=s/A[c][c]}
+ const G=Array.from({length:N},()=>[0,1,2,3].map(()=>new Float64Array(W))),u=new Float64Array(n);
+ for(let k=0;k<W;k++){u.fill(0);F.forEach((i,a)=>u[i]=X[a][k]);
+  for(let e=0;e<N;e++){const d=ed(e);for(let a=0;a<4;a++){let s=0;for(let b=0;b<4;b++)s+=ke[a][b]*u[d[b]];G[e][a][k]=s}}}
+ return {N,L,h,sup,G,hg:[...hg]}}
+function resp(S,t,x){const {N,h,sup,G}=S,p=Math.round(x/h),W=N+1,o=new Float64Array(W);let jk=-1,jd=0;
+ if(p<0||p>N)throw Error('x = '+x+' is outside the beam');
+ if(t==='R'&&!sup[p])throw Error('No support at x = '+x+' for R');
+ if(t==='T'&&sup[p]!=='fixed')throw Error('No fixed support at x = '+x+' for T');
+ for(let k=0;k<W;k++){
+  if(t==='R')o[k]=(p>0?G[p-1][2][k]:0)+(p<N?G[p][0][k]:0)+(k===p?1:0);
+  else if(t==='T')o[k]=(p>0?G[p-1][3][k]:0)+(p<N?G[p][1][k]:0);
+  else if(t==='M')o[k]=p<N?-G[p][1][k]:G[p-1][3][k];
+  else if(t==='W')o[k]=-G[p-1][2][k];
+  else o[k]=p<N?G[p][0][k]:-G[p-1][2][k]}
+ if(t==='V'&&p<N){jk=p;jd=1}if(t==='W'){jk=p;jd=-1}
+ return {o,jk,jd}}
+function truck(r,S,P,sp){const {N,h}=S,off=sp.map(v=>Math.round(v/h)),T=off[off.length-1],D=truck.D||0;let mx=-1e18,mn=1e18,bx,bn;
+ for(let d=1;d>=-1;d-=2)if(!D||D===d)for(let xi=-T;xi<=N+T;xi++){let s=0,al=0;
+  for(let i=0;i<P.length;i++){const q=xi-d*off[i];if(q>=0&&q<=N){s+=P[i]*r.o[q];if(q===r.jk)al=P[i]*r.jd}}
+  for(const v of al?[s,s+al]:[s]){if(v>mx){mx=v;bx={xi,d}}if(v<mn){mn=v;bn={xi,d}}}}
+ return {mx,mn,bx,bn}}
+/*END*/
+const $=i=>document.getElementById(i),f2=(v,d=2)=>(Math.abs(v)<5e-9?0:v).toFixed(d);
+const PRE={'8.8':{n:[[0,'pin'],[20,'pin'],[25,'free']],r:'R0 M10 M20 R20'},
+ '8.9':{n:[[0,'fixed'],[12,'free',1],[24,'pin'],[30,'free']],r:'M0 R24 V24'},
+ '8.10':{n:[[0,'free'],[8,'pin'],[32,'pin'],[40,'free']],r:'R8 R32 V20 M20 V8'},
+ '8.11':{n:[[0,'pin'],[20,'free',1],[28,'pin'],[38,'free'],[48,'pin']],r:'R0 R28 M38 V38'}};
+let ND=[];
+function bN(){$('ilN').innerHTML='<tr><th>x (ft)</th><th>Support</th><th>Hinge</th><th></th></tr>'+ND.map((q,i)=>`<tr data-i="${i}"><td><input type="number" step="any" value="${q.x}" data-k="x"></td><td><select data-k="s">${['free','pin','fixed'].map(o=>`<option${o===q.s?' selected':''}>${o}</option>`).join('')}</select></td><td><input type="checkbox" data-k="h"${q.h?' checked':''} style="width:auto"></td><td><button class="x">×</button></td></tr>`).join('')}
+function chart(S,polys,ex,flip){const W=640,H=200,m=30,t=34,bt=H-20,ys=polys.flatMap(p=>p.pts.map(q=>q[1])).concat(0);
+ let a=Math.min(...ys),b=Math.max(...ys);if(b-a<1e-9){a-=1;b+=1}const pd=(b-a)*.12;a-=pd;b+=pd;
+ const X=x=>m+x/S.L*(W-2*m),Y=y=>flip?t+(y-a)/(b-a)*(bt-t):bt-(y-a)/(b-a)*(bt-t),y0=Y(0);
+ let o=`<svg class="pl" viewBox="0 0 ${W} ${H}">`;
+ polys.forEach(p=>o+=`<polygon class="pg" points="${p.pts.map(q=>X(q[0]).toFixed(1)+','+Y(q[1]).toFixed(1)).join(' ')}"/>`);
+ o+=`<line class="bm" x1="${X(0)}" x2="${X(S.L)}" y1="${y0}" y2="${y0}"/>`;
+ for(const p in S.sup)o+=`<path class="ax" d="M${X(p*S.h)},${y0+2}l-6,10h12z"/>`;
+ S.hg.forEach(p=>o+=`<circle class="hg" cx="${X(p*S.h)}" cy="${y0}" r="3.5"/>`);
+ for(let x=0;x<=S.L;x+=5)o+=`<text x="${X(x)}" y="${H-5}" text-anchor="middle">${x}</text>`;
+ return o+ex(X,Y)+'</svg>'}
+const lab=(X,Y,x,y,al)=>`<text x="${X(x)}" y="${Y(y)+(al>0?-4:11)}" text-anchor="middle" style="fill:var(--ink)">${f2(y)}</text>`;
+function model(S,toks,P,tsp){const W=700,H=185,m=45,L=S.L,h=S.h,yb=80,X=x=>m+x/L*(W-2*m);
+ const sp=Object.keys(S.sup).map(p=>p*h),hg=S.hg.map(p=>p*h),rx=toks.map(t=>t[1]).filter(x=>x>=0&&x<=L);
+ const xs=[...new Set([0,L,...sp,...hg,...rx])].sort((a,b)=>a-b),nm=x=>String.fromCharCode(65+xs.indexOf(x));
+ let o=`<svg class="pl" viewBox="0 0 ${W} ${H}"><line class="bm" style="stroke-width:8" x1="${X(0)}" x2="${X(L)}" y1="${yb}" y2="${yb}"/>`;
+ const first=Math.min(...sp);
+ sp.forEach(x=>{const t=S.sup[Math.round(x/h)],c=X(x);
+  if(t==='fixed')o+=`<rect x="${c-5}" y="${yb-22}" width="10" height="44" style="fill:var(--sup)"/>`;
+  else if(x===first)o+=`<path class="ax" d="M${c},${yb+5}l-9,16h18z"/><line class="ax" x1="${c-14}" x2="${c+14}" y1="${yb+21}" y2="${yb+21}"/>`;
+  else o+=`<path class="ax" d="M${c},${yb+5}l-9,14h18z"/><circle class="ax" cx="${c-5}" cy="${yb+22}" r="3"/><circle class="ax" cx="${c+5}" cy="${yb+22}" r="3"/><line class="ax" x1="${c-14}" x2="${c+14}" y1="${yb+26}" y2="${yb+26}"/>`});
+ hg.forEach(x=>o+=`<circle class="hg" cx="${X(x)}" cy="${yb}" r="5"/>`);
+ xs.forEach(x=>{const c=X(x),pt=!sp.includes(x)&&!hg.includes(x)&&x>0&&x<L;
+  o+=(pt?`<circle class="ax" cx="${c}" cy="${yb-34}" r="10"/><line class="ax" style="stroke-dasharray:2 2" x1="${c}" x2="${c}" y1="${yb-24}" y2="${yb-5}"/>`:'')+`<text x="${c}" y="${yb-30}" text-anchor="middle" style="font-size:13px;font-weight:600;fill:var(--ink)">${nm(x)}</text>`});
+ xs.slice(1).forEach((x,i)=>{const a=X(xs[i]),b=X(x),y=yb+50;o+=`<line class="ax" x1="${a}" x2="${b}" y1="${y}" y2="${y}"/><line class="ax" x1="${a}" x2="${a}" y1="${y-5}" y2="${y+5}"/><line class="ax" x1="${b}" x2="${b}" y1="${y-5}" y2="${y+5}"/><text x="${(a+b)/2}" y="${y-4}" text-anchor="middle" style="fill:var(--ink)">${+(x-xs[i]).toFixed(2)} ft</text>`});
+ const sy=t=>t==='R'?'R':t==='T'?'M':t;
+ o+=`<text x="${m}" y="${H-8}" style="font-size:12px;fill:var(--ink)">Find: ${toks.map(([t,x])=>sy(t)+'_'+nm(x)+(t==='V'?' (right)':'')).join(',  ')}</text></svg>`;
+ const T=tsp[tsp.length-1]||1,W2=700,Z=x=>90+x/T*(W2-180),ax=tsp,y2=70;
+ o+=`<svg class="pl" viewBox="0 0 ${W2} 120"><line class="bm" x1="40" x2="${W2-40}" y1="${y2}" y2="${y2}"/>`+ax.map((x,i)=>`<line class="ld" x1="${Z(x)}" x2="${Z(x)}" y1="14" y2="${y2-16}"/><polygon class="ld" points="${Z(x)},${y2-4} ${Z(x)-4},${y2-14} ${Z(x)+4},${y2-14}"/><circle class="ax" cx="${Z(x)}" cy="${y2-8}" r="7" style="fill:none"/><text x="${Z(x)}" y="10" text-anchor="middle" style="fill:var(--ink);font-size:12px">${P[i]} k</text>`).join('')
+  +tsp.slice(1).map((b,i)=>[tsp[i],b]).map(([a,b])=>`<line class="ax" x1="${Z(a)}" x2="${Z(b)}" y1="100" y2="100"/><line class="ax" x1="${Z(a)}" x2="${Z(a)}" y1="95" y2="105"/><line class="ax" x1="${Z(b)}" x2="${Z(b)}" y1="95" y2="105"/><text x="${(Z(a)+Z(b))/2}" y="96" text-anchor="middle" style="fill:var(--ink)">${b-a} ft</text>`).join('')
+  +`<text x="${W2-40}" y="112" text-anchor="end">HS20-44 truck (not to scale with beam); runs both directions</text></svg>`;
+ return o}
+function run(){try{
+ const h=+$('ilh').value,nums=$('ilAx').value.split(/[\s,]+/).filter(Boolean).map(Number),P=[],sp=[0];nums.forEach((v,i)=>{if(i%2===0)P.push(v||0);else sp.push(sp[sp.length-1]+(v||0))});if(!P.length)throw Error('Enter at least one axle load');while(sp.length>P.length)sp.pop();truck.D=+$('ild').value;
+ const S=solve(ND,h),{N,L}=S,ax=b=>sp.map((o,i)=>({q:b.xi-b.d*Math.round(o/h),P:P[i]}));
+ const toks=$('ilR').value.trim().split(/[\s,]+/).filter(Boolean).map(s=>{const m=s.match(/^([RTMV])(-?\d+(\.\d+)?)$/i);if(!m)throw Error('Bad response “'+s+'” – use e.g. R0 M10 V20');return [m[1].toUpperCase(),+m[2]]});
+ const ttl={R:'Reaction R',T:'Reaction moment M',M:'Moment M',V:'Shear V (right of x)'},un=t=>t==='M'||t==='T'?'kip·ft':'kip',pos=b=>`x=${f2(b.xi*h,1)} ft ${b.d>0?'→':'←'}`;
+ let tb='<tr><th>Response</th><th class="num">IL max</th><th class="num">IL min</th><th class="num">Truck max</th><th>at</th><th class="num">Truck min</th><th>at</th></tr>',pl='',wsH='';
+ toks.forEach(([t,x])=>{const r=resp(S,t,x),T=truck(r,S,P,sp),nm=`${ttl[t]} @ ${x} ft`,v=[...r.o];if(r.jk>=0)v.push(r.o[r.jk]+r.jd);
+  const mxI=Math.max(...v),mnI=Math.min(...v),a1=ax(T.bx),a2=ax(T.bn);
+  const wk=(b,val,lbl)=>{let s=0,rows=ax(b).map(a=>{if(a.q<0||a.q>N)return `<tr><td>${a.P} k</td><td class="num">${f2(a.q*h,1)}</td><td colspan="2">off beam</td></tr>`;const y=r.o[a.q];s+=a.P*y;return `<tr><td>${a.P} k</td><td class="num">${f2(a.q*h,1)}</td><td class="num">${f2(y,3)}</td><td class="num">${f2(a.P*y)}</td></tr>`}).join('');const c=val-s;if(Math.abs(c)>1e-6)rows+=`<tr><td colspan="3">load at section (jump ±1)</td><td class="num">${f2(c)}</td></tr>`;return `<h3>${lbl}: ${pos(b)}</h3><table><tr><th>Axle</th><th class="num">x (ft)</th><th class="num">IL ordinate y</th><th class="num">P·y</th></tr>${rows}<tr><td colspan="3"><b>Σ P·y</b></td><td class="num"><b>${f2(val)}</b></td></tr></table>`};
+  wsH+=`<details style="margin-bottom:8px"><summary><b>${nm}</b></summary>${wk(T.bx,T.mx,'Max')}${wk(T.bn,T.mn,'Min')}</details>`;
+  tb+=`<tr><td>${nm}</td><td class="num">${f2(mxI)}</td><td class="num">${f2(mnI)}</td><td class="num"><b>${f2(T.mx)}</b> ${un(t)}</td><td>${pos(T.bx)}</td><td class="num"><b>${f2(T.mn)}</b> ${un(t)}</td><td>${pos(T.bn)}</td></tr>`;
+  const pts=[[0,0]];for(let k=0;k<=N;k++){pts.push([k*h,r.o[k]]);if(k===r.jk)pts.push([k*h,r.o[k]+r.jd])}pts.push([L,0]);
+  const ar=(A,c)=>A.filter(a=>a.q>=0&&a.q<=N).map(a=>{},0);
+  pl+=`<h3>${nm} <span class="note">(IL ordinate per unit load, ${t==='M'||t==='T'?'ft':'—'})</span></h3>`+chart(S,[{pts}],(X,Y)=>{
+   const A=(AX,c)=>AX.filter(a=>a.q>=0&&a.q<=N).map(a=>{const xx=X(a.q*h);return `<line class="${c}" x1="${xx}" y1="6" x2="${xx}" y2="26"/><polygon class="${c}" points="${xx},29 ${xx-3},22 ${xx+3},22"/><text x="${xx+3}" y="14">${a.P}</text>`}).join('');
+   const im=pts.reduce((b,q,i)=>q[1]>pts[b][1]?i:b,0),jn=pts.reduce((b,q,i)=>q[1]<pts[b][1]?i:b,0);
+   return A(a2,'l2')+A(a1,'ld')+(pts[im][1]>1e-6?lab(X,Y,pts[im][0],pts[im][1],1):'')+(pts[jn][1]<-1e-6?lab(X,Y,pts[jn][0],pts[jn][1],-1):'')})});
+ $('ilT').innerHTML=tb;$('ilP').innerHTML=pl;$('ilM').innerHTML=model(S,toks,P,sp);$('ilW').innerHTML=wsH;
+ // envelopes
+ const E={Mx:[],Mn:[],Px:[],Pn:[],Qx:[],Qn:[]};
+ for(let p=0;p<=N;p++){const x=p*h,tm=truck(resp(S,'M',x),S,P,sp);E.Mx[p]=tm.mx;E.Mn[p]=tm.mn;
+  if(p<N){const t=truck(resp(S,'V',x),S,P,sp);E.Px[p]=t.mx;E.Pn[p]=t.mn}
+  if(p>0){const t=truck(resp(S,'W',x),S,P,sp);E.Qx[p]=t.mx;E.Qn[p]=t.mn}}
+ const band=(a,b,c,d)=>{const A=[],B=[];for(let e=0;e<N;e++){A.push([e*h,a[e]],[(e+1)*h,b[e+1]]);B.push([e*h,c[e]],[(e+1)*h,d[e+1]])}return A.concat(B.reverse())};
+ const ext=(pts,mx)=>pts.reduce((b,q)=>(mx?q[1]>b[1]:q[1]<b[1])?q:b,pts[0]);
+ const sh=band(E.Px,E.Qx,E.Pn,E.Qn),mo=band(E.Mx,E.Mx,E.Mn,E.Mn);
+ const vmx=ext(sh,1),vmn=ext(sh,0),mmx=ext(mo,1),mmn=ext(mo,0);
+ const lb=(pt,al)=>(X,Y)=>lab(X,Y,pt[0],pt[1],al);
+ $('ilE').innerHTML='<h3>Shear envelope V<sub>max</sub> / V<sub>min</sub> (kip)</h3>'+chart(S,[{pts:sh}],(X,Y)=>lab(X,Y,vmx[0],vmx[1],1)+lab(X,Y,vmn[0],vmn[1],-1))
+  +'<h3>Moment envelope M<sub>max</sub> / M<sub>min</sub> (kip·ft) – sagging (+) plotted downward, tension side</h3>'+chart(S,[{pts:mo}],(X,Y)=>lab(X,Y,mmx[0],mmx[1],-1)+lab(X,Y,mmn[0],mmn[1],1),1);
+ $('ilS').innerHTML=`<span class="pill ok">Solved</span><span>Length <b>${L} ft</b></span><span>V<sub>max</sub> <b>${f2(vmx[1])}</b> @ ${f2(vmx[0],1)}</span><span>V<sub>min</sub> <b>${f2(vmn[1])}</b> @ ${f2(vmn[0],1)}</span><span>M<sub>max</sub> <b>${f2(mmx[1])}</b> @ ${f2(mmx[0],1)}</span><span>M<sub>min</sub> <b>${f2(mmn[1])}</b> @ ${f2(mmn[0],1)}</span>`;
+}catch(e){$('ilS').innerHTML=`<span class="pill bad">Error</span><span>${e.message}</span>`;$('ilT').innerHTML=$('ilP').innerHTML=$('ilE').innerHTML=''}}
+function load(k){ND=PRE[k].n.map(a=>({x:a[0],s:a[1],h:a[2]||0}));$('ilR').value=PRE[k].r;bN();run()}
+$('IL').addEventListener('input',ev=>{const el=ev.target,tr=el.closest('#ilN tr');if(el.id==='ilT0'&&el.value)$('ilAx').value=el.value;
+ if(tr&&tr.dataset.i!==undefined){ND[+tr.dataset.i][el.dataset.k]=el.type==='checkbox'?+el.checked:el.tagName==='SELECT'?el.value:+el.value}run()});
+$('IL').addEventListener('click',ev=>{const b=ev.target.closest('button');if(!b)return;
+ if(b.id==='ill')load($('ilp').value);if(b.id==='ilA'){ND.push({x:(ND.length?ND[ND.length-1].x:0)+5,s:'free',h:0});bN();run()}
+ if(b.classList.contains('x')){ND.splice(+b.closest('tr').dataset.i,1);bN();run()}});
+load('8.8');
+})();
+</script>
+</body></html>
